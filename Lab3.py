@@ -57,6 +57,16 @@ class sentiment_analysis:
         :param tweet: The given original tweet
         :return: A clean tweet after preprocess
         """
+        def identify_smiley(tweet):
+            tweet_to_tokens = tweet.split()
+            for i in tweet_to_tokens:
+                if i in [';-(' , ';(' ,':(',')-;',');','):'] :
+                    tweet_to_tokens.append('sad')
+                elif i in [';-)', ';)',':)','(;','(:','(-;']:
+                    tweet_to_tokens.append('happy')
+            tweet = ' '.join([w for w in tweet_to_tokens])
+            return tweet
+
         def clean_tweet_to_tokens(tweet):
             """
             This method clean the tweet from emojis, hashtags, urls user names and more and return a list that contain
@@ -64,6 +74,7 @@ class sentiment_analysis:
             :param tweet: A original tweet.
             :return: A list of tokens after cleaning.
             """
+
             # Remove user @ references and '#' from tweet
             tweet = re.sub(r"http\S+|www\S+|https\S+", '', tweet, flags=re.MULTILINE)
             tweet = re.sub('\[.*?\]', '', tweet)
@@ -84,10 +95,13 @@ class sentiment_analysis:
             :param tweet: The list of tokens of the tweet
             :return: A list if tokens of tweet without stopwords.
             """
-            stop_words = set(stopwords.words('english'))
-            for word in [".", ",", "(", ")", "<", ">", "br", "!", "/", "--", "n't", "'s", "''", "?", "...", "``", ":",
-                         "-", "'", "would", ";", "*", "@", "&", "\\", "~", ";", ";)", "[", "]"]:
-                stop_words.add(word)
+            stop_words = ['The','the','is','to','a','that','and','or','are','as','is','it','my','there','an','than','on','so',
+                          'there','i','I','There']
+            # stop_words_try = set(stopwords.words('english'))
+            # for word in [".", ",", "(", ")", "<", ">", "br", "!", "/", "--", "'s", "''", "?", "...", "``", ":",
+            #              "-", "'", ";", "*", "@", "&", "\\", "~", ";", "[", "]"]:
+            #     stop_words.append(word)
+
             filtered_tweet = [w for w in tweet if not w in stop_words]
             return filtered_tweet
 
@@ -102,7 +116,7 @@ class sentiment_analysis:
             # stemmer = PorterStemmer()
             # tweet = ' '.join([stemmer.stem(w) for w in tweet_without_stopwords])
 
-            # using lemmatization
+            # # using lemmatization
             lemmatizer = WordNetLemmatizer()
             tweet = ' '.join([lemmatizer.lemmatize(w) for w in tweet_without_stopwords])
 
@@ -130,9 +144,10 @@ class sentiment_analysis:
         tokens_re = re.compile(r'(' + '|'.join(regex_str) + ')', re.VERBOSE | re.IGNORECASE)
         emoticon_re = re.compile(r'^' + emoticons_str + '$', re.VERBOSE | re.IGNORECASE)
 
+        tweet = identify_smiley(tweet)
         tweets_tokens = clean_tweet_to_tokens(tweet)
-        # tweets_tokens_without_stop_words= remove_stop_words(tweets_tokens)
-        final_tweets_tokens = Lemmatization(tweets_tokens)
+        tweets_tokens_without_stop_words= remove_stop_words(tweets_tokens)
+        final_tweets_tokens = Lemmatization(tweets_tokens_without_stop_words)
         return final_tweets_tokens
 
     def split_data_train(self):
@@ -140,7 +155,7 @@ class sentiment_analysis:
         This method split the data train for 80% for train tweets and 20% for validation.
         :return:
         """
-        self.x_train, self.x_val, self.y_train, self.y_val = train_test_split(self.tweets_train, self.sentiment_train, test_size=0.1)
+        self.x_train, self.x_val, self.y_train, self.y_val = train_test_split(self.tweets_train, self.sentiment_train, test_size=0.2)
 
 
     def chosen_model(self):
@@ -201,6 +216,12 @@ class sentiment_analysis:
             plot_confusion_matrix(cnf_matrix, classes=self.labels_classes,
                                   title='Logistic Regression - Confusion matrix')
 
+            train_csv = pd.DataFrame(self.x_val)
+            train_csv['true_label'] = self.y_val
+            train_csv['predicted_label'] = self.predictions_val
+            train_csv.to_csv('train_file.csv', index=False)
+
+
         if (self.nb_chosen):
             print("The best model that chosen with the highest avg accuracy of CV is: Naive Bayes!")
             print("...fit model...")
@@ -216,6 +237,7 @@ class sentiment_analysis:
             plt.figure()
             plot_confusion_matrix(cnf_matrix, classes=self.labels_classes,
                                   title='Naive Bayes - Confusion matrix')
+
 
 
     def logistic_regression_model(self):
@@ -368,6 +390,7 @@ class sentiment_analysis:
 if __name__ == '__main__':
     path_train = r"Train.csv"
     path_test = r"Test.csv"
+
     s_analysis = sentiment_analysis(path_train, path_test)
     s_analysis.split_data_train()
     s_analysis.logistic_regression_model()
